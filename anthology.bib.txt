@@ -17,10 +17,10 @@ bib file size limit. Consequently, the Anthology shards the file automatically i
 49 MB shards.
 
 There are currently (2025) two files:
-- https://aclanthology.org/anthology-overleaf-1.bib
-- https://aclanthology.org/anthology-overleaf-2.bib
+- https://aclanthology.org/anthology-1.bib
+- https://aclanthology.org/anthology-2.bib
 
 You can download these directly from Overleaf from New File -> From External URL,
 and then adding them to the \bibliography line in acl_latex.tex:
 
-    \bibliography{custom,anthology-overleaf-1,anthology-overleaf-2}
+    \bibliography{custom,anthology-1,anthology-2}
