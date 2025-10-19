@@ -1,0 +1,252 @@
+
+
+\begin{document}
+\maketitle
+\begin{abstract}
+\begin{abstract}
+This study investigates how attention mechanisms influence natural language inference (NLI) performance across three architectures: LSTM with Cross-Attention, BiLSTM with Self-Attention, and Transformer encoders. 
+Each model was trained under identical hyperparameter settings to ensure fair comparison and reproducibility. 
+Extensive experiments, including ablation studies on attention mechanisms, transformer depth, and embedding dimensions, reveal nuanced trade-offs between interpretability and accuracy. 
+While BiLSTM Self-Attention achieved the highest test accuracy among attention-enhanced models (71.64\%), the BiLSTM without attention performed slightly better (72.25\%), suggesting that attention improves interpretability rather than raw performance. 
+Transformer models demonstrated sensitivity to architecture depth and embedding size, reflecting overfitting under limited data. 
+Overall, the findings highlight that attention mechanisms enhance transparency in reasoning while requiring careful tuning to maintain generalisation.
+\end{abstract}
+
+
+
+\section{Introduction}
+
+Natural Language Inference (NLI) is a foundational problem in Natural Language Processing (NLP) that requires models to determine whether a hypothesis logically follows from a given premise. Although recent advances in deep learning have improved NLI accuracy, challenges remain in explaining why a model arrives at a specific decision. This limitation has led to growing interest in attention-based mechanisms that provide both predictive performance and interpretability.
+
+This project examines the role of attention architectures in enhancing interpretability and reasoning in NLI models. Specifically, it compares three architectures—LSTM Cross-Attention, BiLSTM Self-Attention, and Transformer—to investigate how different attention mechanisms influence model behaviour, contextual understanding, and generalisation in low-data scientific settings. Each model was trained under identical hyperparameter configurations, including batch size, optimiser, learning rate, and dropout, ensuring that any observed performance variation stemmed solely from architectural differences.
+
+Through this comparison, the study explores how Cross-Attention captures surface-level token relationships, how Self-Attention introduces intra-sequence contextual learning, and how Transformer attention models global dependencies. Both quantitative metrics and qualitative visualisations (attention heatmaps) were employed to assess accuracy, attention intensity, and semantic focus across models.
+
+The findings demonstrate that while LSTM Cross-Attention achieved competitive accuracy (70.65%), its attention remained lexically driven and semantically shallow. Conversely, BiLSTM Self-Attention and Transformer models exhibited more meaningful attention distributions, highlighting a trade-off between performance and interpretability. This work emphasises that interpretability and accuracy are not always correlated and that understanding model focus patterns is essential for building transparent and trustworthy NLP systems.
+
+\section{Related Work}
+
+Attention mechanisms have become central to improving both performance and interpretability in natural language processing. Early approaches by \citet{bahdanau2014neural} introduced the concept of attention in neural machine translation, allowing models to selectively focus on relevant parts of input sequences. This innovation addressed the limitations of traditional recurrent networks that struggled with long-range dependencies.
+
+Subsequent research expanded the role of attention beyond translation. \citet{lin2017structured} proposed a Self-Attention mechanism within a BiLSTM architecture, enabling models to capture intra-sentence relationships and generate interpretable structured sentence representations. Self-Attention not only improved classification accuracy but also provided insights into which tokens contributed most to model predictions.
+
+The paradigm shifted significantly with the introduction of the Transformer architecture by \citet{vaswani2017attention}, which replaced recurrence entirely with multi-head Self-Attention layers. This design allowed global context modelling and parallel computation, leading to state-of-the-art performance across NLP tasks.
+
+Building on this progression, the present study compares Cross-Attention, Self-Attention, and Transformer architectures under controlled conditions to investigate how attention structure influences reasoning and interpretability in NLI.
+
+
+\section{Methodology}
+
+This study evaluates three neural architectures—LSTM with Cross-Attention, BiLSTM with Self-Attention, and a Transformer encoder—on science-domain natural language inference (binary: \textsc{Entails} vs.\ \textsc{Neutral}). All models were trained under identical optimisation settings to ensure a fair comparison; only the architectural component under study was varied in ablations.
+
+\subsection{Dataset and Preprocessing}
+The dataset comprises premise–hypothesis pairs labelled as \textsc{Entails} (1) or \textsc{Neutral} (0). We used the provided splits: \textbf{23{,}088} train (87\%), \textbf{1{,}304} validation (4.9\%), and \textbf{2{,}126} test (8.1\%). Text was tokenised via a lightweight regex tokenizer (\verb|re.findall(r'\b\w+\b', text)|), lowercased, truncated/padded to \textbf{128} tokens, and mapped to a vocabulary of \textbf{11{,}338} types.
+
+\subsection{Model Architectures}
+\textbf{LSTM + Cross-Attention:} Two-layer bidirectional LSTM (\textbf{hidden}=256) encodes premise/hypothesis; a cross-attention module aligns hypothesis tokens to premise states to form an alignment-aware sentence representation.  
+\textbf{BiLSTM + Self-Attention:} Two-layer bidirectional LSTM (\textbf{hidden}=256) followed by multi-head self-attention (\textbf{4 heads}) to weight salient tokens before max/mean pooling.  
+\textbf{Transformer Encoder:} A lightweight encoder with \textbf{2 layers}, \textbf{8 heads} per layer, and position-wise feed-forward blocks; premise and hypothesis are encoded and combined for classification.
+
+\subsection{Training Configuration}
+We used Adam (\(\beta_1{=}0.9,\ \beta_2{=}0.999\)), \textbf{learning rate} \(=1\times10^{-4}\), \textbf{dropout} \(=0.1\), small batch size (kept constant across models), and \textbf{early stopping} with \textbf{patience}=3 on validation loss for up to \textbf{8} epochs. To maintain numerical stability, we applied \textbf{gradient clipping} (max-norm \(=1.0\)) and skipped the rare batch whose loss evaluated to NaN. Training ran on an NVIDIA Tesla T4 GPU.
+
+\subsection{Evaluation Protocol}
+We report test \textbf{accuracy} and perform controlled ablations on (i) attention usage, (ii) Transformer depth, and (iii) embedding dimension. We additionally provide \textbf{qualitative} analyses via attention heatmaps to examine where models focus when predicting.
+
+
+
+\section{Results}
+
+\subsection{Main Quantitative Results}
+Table~\ref{tab:main} reports test accuracy for the three architectures under the shared training setup. The BiLSTM with Self-Attention attains the highest accuracy, closely followed by the LSTM with Cross-Attention; the Transformer trails slightly under identical hyperparameters.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{l c}
+\hline
+\textbf{Model} & \textbf{Accuracy (\%)} \\
+\hline
+LSTM + Cross-Attention & 70.65 \\
+BiLSTM + Self-Attention & \textbf{71.64} \\
+Transformer (2 layers, 8 heads) & 68.96 \\
+\hline
+\end{tabular}
+\caption{Overall test accuracy on the NLI task (binary: \textsc{Entails}/\textsc{Neutral}).}
+\label{tab:main}
+\end{table}
+
+\noindent
+\textbf{Observation.} The small gap among models suggests that \emph{attention design} rather than model size alone drives differences in this low-data regime. Note that Transformers typically require tuned optimisation and larger corpora; in preliminary sensitivity checks we observed accuracy improved when \emph{increasing} learning rate and weight decay (not reported as a full sweep to preserve fairness).
+
+\subsection{Ablation Studies}
+
+\paragraph{A1: Does attention help?}
+We toggled attention within the BiLSTM encoder to isolate its effect.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{l c c}
+\hline
+\textbf{Variant} & \textbf{With Attn} & \textbf{No Attn} \\
+\hline
+BiLSTM & 71.64 & \textbf{72.25} \\
+\hline
+\end{tabular}
+\caption{Ablation A1: Self-attention \emph{reduced} accuracy by 0.61 pp in this setting.}
+\label{tab:ablation-attn}
+\end{table}
+
+\noindent
+\textbf{Insight.} Attention slightly \emph{hurt} accuracy (\(-0.61\) pp), despite improving \emph{interpretability}. This “attention paradox” indicates that the learned weighting can over-emphasise spurious cues in small, specialised corpora.
+
+\paragraph{A2: How deep should the Transformer be?}
+We varied the encoder depth while holding all else fixed.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{l c c c}
+\hline
+\textbf{Layers} & \textbf{2} & \textbf{4} & \textbf{6} \\
+\hline
+Accuracy (\%) & 68.96 & \textbf{69.90} & 68.49 \\
+\hline
+\end{tabular}
+\caption{Ablation A2: 4 layers $>$ 2 layers $>$ 6 layers; deeper models overfit.}
+\label{tab:ablation-depth}
+\end{table}
+
+\noindent
+\textbf{Insight.} Depth beyond 4 layers degraded performance, consistent with \emph{overfitting} rather than “more stable convergence.”
+
+\paragraph{A3: What is the right embedding size?}
+We swept embedding dimensionality, keeping architecture and optimisation unchanged.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{l c c c}
+\hline
+\textbf{Dim} & \textbf{64} & \textbf{128} & \textbf{256} \\
+\hline
+Accuracy (\%) & \textbf{71.87} & 71.78 & 68.96 \\
+\hline
+\end{tabular}
+\caption{Ablation A3: Compact embeddings (64–128) outperform larger ones (256).}
+\label{tab:ablation-embed}
+\end{table}
+
+\noindent
+\textbf{Insight.} Smaller embeddings generalise better; 256-dim adds capacity that the dataset cannot support.
+
+\subsection{Qualitative Analysis}
+We inspected attention heatmaps on held-out examples to understand model focus patterns.
+
+\paragraph{Case: Sample 7 (error analysis).}
+LSTM+Cross-Attention assigned near-maximal weight to \emph{``petals''}, a lexically salient but \emph{semantically uninformative} token for the entailment decision, and predicted \textsc{Neutral} (incorrect; gold \textsc{Entails}). This aligns with its narrower, lower-contrast heatmaps and indicates reliance on surface overlap.
+
+\paragraph{Case: Sample 70 (error analysis).}
+The LSTM again mispredicted (pred.\ \textsc{Entails}) while highlighting tokens that did not support the hypothesis. In contrast, BiLSTM+Self-Attention distributed weight over relational and connective terms, and the Transformer spread attention more globally, reflecting better contextual integration (even when its final accuracy was lower overall).
+
+\paragraph{Takeaway.}
+Across samples, BiLSTM+Self-Attention and Transformer produced \emph{more interpretable} focus—emphasising negations, causal markers, and key relational nouns—whereas LSTM+Cross-Attention frequently fixated on isolated content words. This explains why BiLSTM won overall, and why attention \emph{helped understanding} even when A1 showed a small accuracy drop.
+
+
+
+\section{Discussion}
+
+\section{Discussion}
+
+The experiments highlight a clear trade-off between quantitative accuracy and qualitative interpretability. 
+Among the baseline architectures, the BiLSTM with Self-Attention achieved the highest test accuracy among attention-enhanced models at 71.64\%, outperforming the LSTM with Cross-Attention (70.65\%) by 0.99~percentage points. 
+However, the BiLSTM without attention achieved an even higher score of 72.25\%, indicating that attention mechanisms slightly reduced numerical performance while improving interpretability. 
+This suggests that, in low-resource NLI tasks, attention may not always boost accuracy but can enhance transparency in model reasoning.
+
+Transformer layer depth showed non-monotonic effects: performance improved from two layers (68.96\%) to four layers (69.90\%), but degraded with six layers (68.49\%), reflecting overfitting under limited data. 
+Embedding-size ablations confirmed that compact representations (64--128 dimensions) generalised best, with 64-dimensional embeddings achieving the highest accuracy (71.87\%) overall. 
+These results suggest that smaller, regularised architectures are better suited to low-resource NLI settings, where large models tend to overfit.
+
+Qualitative analyses further revealed distinct reasoning behaviours across architectures. 
+LSTM Cross-Attention relied on shallow lexical overlap (e.g., attending to \textit{petals}) and often misclassified examples. 
+BiLSTM Self-Attention captured compositional sentence relations and made correct semantic predictions, while Transformer self-attention identified meaningful contextual cues, such as focusing on the token \textit{separate} (score = 0.975), correctly identifying relational structure. 
+Overall, attention mechanisms improved interpretability but did not consistently increase accuracy, suggesting that practitioners must balance transparency and performance based on task requirements.
+
+
+
+\section{Conclusion}
+
+This study compared three neural architectures—LSTM with Cross-Attention, BiLSTM with Self-Attention, and Transformer encoders—to evaluate how attention structures influence reasoning and performance in low-resource NLI tasks. 
+BiLSTM Self-Attention provided superior interpretability through compositional semantic understanding at competitive accuracy (71.64\%), though the BiLSTM without attention achieved marginally higher raw performance (72.25\%). 
+Ablation studies revealed that attention mechanisms can reduce accuracy while improving transparency, underscoring the importance of evaluating models beyond numerical metrics. 
+Transformer results further highlighted the need to carefully tune depth and embedding size to prevent overfitting. 
+Future work should investigate whether pre-trained embeddings or external knowledge bases can mitigate attention's overfitting tendency while preserving interpretability gains.
+
+
+\section{Experimental Reflections}
+
+Several practical insights emerged during experimentation. 
+All models were trained with identical hyperparameters to ensure fair comparison, 
+though preliminary experiments indicated that Transformers could achieve higher accuracy 
+with architecture-specific tuning (higher learning rate and weight decay). 
+We prioritised controlled comparison over maximum performance to isolate architectural effects. 
+Early stopping consistently improved generalisation, while occasional NaN batches were skipped 
+to maintain numerical stability. The small batch size (16) enhanced regularisation despite introducing slight training variance. 
+Attention heatmaps revealed that LSTM Cross-Attention occasionally focused on lexically salient 
+but semantically irrelevant tokens, whereas BiLSTM Self-Attention exhibited more compositional reasoning. 
+These reflections highlight the importance of combining quantitative evaluation with qualitative inspection 
+to achieve both robustness and interpretability in neural NLI models.
+
+
+
+
+
+\bibliographystyle{acl_natbib}
+\bibliography{references}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
